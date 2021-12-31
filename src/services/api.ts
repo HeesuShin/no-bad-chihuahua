@@ -1,7 +1,15 @@
 import axios from 'axios';
-import { HuauaRewardResponse } from '../models/types';
+import { HuahuaBalanceResponse, HuahuaRewardResponse } from '../models/types';
 
-export const getReward = async (address: string): Promise<HuauaRewardResponse> => {
-  const response = await axios.get(`https://api.chihuahua.wtf/distribution/delegators/${address}/rewards`);
-  return response.data as HuauaRewardResponse;
+const baseUrl = 'https://api.chihuahua.wtf';
+
+export const getReward = async (address: string): Promise<HuahuaRewardResponse> => {
+  const { data }: { data: HuahuaRewardResponse } = await axios.get(`${baseUrl}/distribution/delegators/${address}/rewards`);
+  return data;
+};
+
+// it returns uhuahua with no decimal point
+export const getBalance = async (address: string): Promise<HuahuaBalanceResponse> => {
+  const { data }: { data: HuahuaBalanceResponse } = await axios.get(`${baseUrl}/bank/balances/${address}`);
+  return data;
 };

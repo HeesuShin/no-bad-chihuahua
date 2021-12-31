@@ -5,28 +5,33 @@ import schedule from 'node-schedule';
 
 import { convertHexStringToBuffer, createClaimAndDelegateRawTx, getAccount, getClient, sendTx, signTx } from './services/cosmos';
 import { COIN_TYPE, GAS_PRICE, SUPPORT_CHAIN_LIST } from './config';
-import { getReward } from './services/api';
+import { getBalance, getReward } from './services/api';
 import { ChainInformation } from './models/types';
 import prompt from './cli/prompt';
 
 const autoStaking = async (privateKey: Buffer, chainInformation: ChainInformation) => {
+  const gasPrice = new BN(GAS_PRICE, 10);
   const client = await getClient(chainInformation.rpcUrl);
   const account = await getAccount(privateKey, chainInformation);
-  const rewardResponse = await getReward(account.address);
+  const reward = await getReward(account.address);
+  const balance = await getBalance(account.address);
 
-  const validatorAddress = rewardResponse.result.rewards[0].validator_address;
-  const amount = new BN(rewardResponse.result.rewards[0].reward[0].amount.split('.')[0], 10);
-  const gasPrice = new BN(GAS_PRICE, 10);
+  const validatorAddress = reward.result.rewards[0].validator_address;
 
-  const rawTx = await createClaimAndDelegateRawTx(
-    client,
-    account.address,
-    validatorAddress,
-    amount.sub(gasPrice).toString(),
-    chainInformation,
-  );
+  // it returns uhuahua with decimal point 18
+  const rewardAmount = new BN(reward.result.rewards[0].reward[0].amount.replace('.', ''), 10);
+  // it returns uhuahua with no decimal point
+  const balanceAmount = new BN(`${balance.result[0].amount}${'0'.repeat(18)}`, 10);
+  const amount = rewardAmount.add(balanceAmount);
+  const scaledAmount = amount.div(new BN(`1${'0'.repeat(18)}`));
+
+  const calculatedAmount = scaledAmount.sub(gasPrice).toString();
+
+  const rawTx = await createClaimAndDelegateRawTx(client, account.address, validatorAddress, calculatedAmount, chainInformation);
   const signedTx = await signTx(privateKey, rawTx, chainInformation);
   const result = await sendTx(client, signedTx);
+  console.log(`scaledAmount: ${scaledAmount}`);
+  console.log(`calculatedAmount: ${calculatedAmount}`);
 };
 
 const run = async () => {
@@ -53,7 +58,7 @@ const run = async () => {
       privateKey = convertHexStringToBuffer(authString.startsWith('0x') ? authString.slice(2) : authString);
     }
 
-    schedule.scheduleJob('*/1 * * * *', async () => {
+    schedule.scheduleJob('*/10 * * * *', async () => {
       await autoStaking(privateKey, selectedChainInformation);
     });
   }

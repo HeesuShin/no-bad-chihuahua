@@ -19,7 +19,7 @@ export interface SignedTx {
   signedTx?: any;
 }
 
-export interface HuauaRewardResponse {
+export interface HuahuaRewardResponse {
   height: string;
   result: {
     rewards: [
@@ -34,6 +34,15 @@ export interface HuauaRewardResponse {
       },
     ];
   };
+}
+export interface HuahuaBalanceResponse {
+  height: string;
+  result: [
+    {
+      denom: string;
+      amount: string;
+    },
+  ];
 }
 
 export interface ChainInformation {
